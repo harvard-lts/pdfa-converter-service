@@ -4,19 +4,19 @@
   <welcome-file-list>
     <welcome-file>index.html</welcome-file>
   </welcome-file-list>
-  <listener>
-    <description>Configures logging for this application</description>
-    <display-name>Logging Configuration</display-name>
-    <listener-class>edu.harvard.hul.ois.drs.service.listeners.LoggingConfigurator</listener-class>
-  </listener>
+<!--   <listener> -->
+<!--     <description>Configures logging for this application</description> -->
+<!--     <display-name>Logging Configuration</display-name> -->
+<!--     <listener-class>edu.harvard.hul.ois.drs.service.listeners.LoggingConfigurator</listener-class> -->
+<!--   </listener> -->
   <servlet>
     <servlet-name>PdfaConverterServlet</servlet-name>
     <servlet-class>edu.harvard.hul.ois.drs.service.servlets.PdfaConverterServlet</servlet-class>
     <load-on-startup>0</load-on-startup>
   </servlet>
   <servlet-mapping>
-    <servlet-name>FitsServlet</servlet-name>
-    <url-pattern>/examine</url-pattern>
+    <servlet-name>PdfaConverterServlet</servlet-name>
+    <url-pattern>/convert</url-pattern>
     <url-pattern>/version</url-pattern>
   </servlet-mapping>
 </web-app>

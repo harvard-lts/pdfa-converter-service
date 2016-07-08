@@ -8,8 +8,8 @@
 	<name>PDF/a Converter Service</name>
 
 	<properties>
-        <pdfa-converter-jar-groupId>edu.harvard.hul.ois.drs.pdfaconvert</pdfa-converter-jar-groupId>
-        <pdfa-converter-jar-artifactId>pdfa-converter</pdfa-converter-jar-artifactId>
+		<pdfa-converter-jar-groupId>edu.harvard.hul.ois.drs.pdfa</pdfa-converter-jar-groupId>
+		<pdfa-converter-jar-artifactId>pdfa-converter</pdfa-converter-jar-artifactId>
 		<pdfa-converter-jar-version>0.9.0-SNAPSHOT</pdfa-converter-jar-version>
 	</properties>
 
@@ -23,36 +23,17 @@
 					<target>1.8</target>
 				</configuration>
 			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-install-plugin</artifactId>
-				<version>2.5.2</version>
-				<executions>
-					<execution>
-						<id>install-external</id>
-						<phase>clean</phase>
-						<configuration>
-							<file>lib/pdfa-converter-${pdfa-converter-jar-version}.jar</file>
-							<repositoryLayout>default</repositoryLayout>
-							<groupId>${pdfa-converter-jar-groupId}</groupId>
-							<artifactId>${pdfa-converter-jar-artifactId}</artifactId>
-							<version>${pdfa-converter-jar-version}</version>
-							<packaging>jar</packaging>
-							<generatePom>true</generatePom>
-						</configuration>
-						<goals>
-							<goal>install-file</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
 	<dependencies>
 		<dependency>
+		    <!-- MAJOR temporary kludge: Reference a project-local dependency rather than via a Maven repo. (until available in a repo.) -->
 			<groupId>${pdfa-converter-jar-groupId}</groupId>
 			<artifactId>${pdfa-converter-jar-artifactId}</artifactId>
 			<version>${pdfa-converter-jar-version}</version>
+			<!-- remove this next 2 lines once the pdfa-converter JAR is available from a Maven repo -->
+            <systemPath>${project.basedir}/lib/pdfa-converter-0.9.0-SNAPSHOT.jar</systemPath>
+            <scope>system</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
@@ -92,12 +73,29 @@
 			<groupId>org.apache.logging.log4j</groupId>
 			<artifactId>log4j-core</artifactId>
 		</dependency>
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-            <version>2.5</version>
-            <scope>provided</scope>
-        </dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>servlet-api</artifactId>
+			<version>2.5</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.4</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<dependencyManagement>

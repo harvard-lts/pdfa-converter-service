@@ -8,6 +8,6 @@ public class Constants {
     public final static String TEXT_HTML_MIMETYPE = "text/html";
     public final static String TEXT_PLAIN_MIMETYPE = "text/plain";
     public final static String TEXT_XML_MIMETYPE = "text/xml";
+    public final static String PDF_MIMETYPE = "application/pdf";
     public final static String FILE_PARAM = "file";
-    public final static String PDFA_CONVERTER_HOME_SYSTEM_PROP_NAME = "pdfaConverter.home";
 }

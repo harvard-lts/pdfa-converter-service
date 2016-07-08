@@ -5,11 +5,11 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>File Upload</title>
+<title>File Upload and Convert</title>
 </head>
 <body>
     <center>
-        <form method="post" action="examine" enctype="multipart/form-data">
+        <form method="post" action="convert" enctype="multipart/form-data">
             Select file to upload: <input type="file" name="datafile" />
             <br/><br/>
             <input type="submit" value="Upload" />

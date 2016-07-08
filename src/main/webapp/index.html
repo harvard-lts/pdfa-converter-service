@@ -12,19 +12,19 @@
 <!-- Latest compiled and minified JavaScript -->
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 
-<title>FITS Service</title>
+<title>PDF/A Converter Service</title>
 </head>
 
 <body>
   <div class="container-fluid">
     <div class="jumbotron text-center">
-      <h1>FITS Web Service</h1>
-      <h2>FITS Version: <span id="fitsversion"></span></h2>
+      <h1>PDF/A Converter Web Service</h1>
+      <h2>PDF/A Converter Version: <span id="pdfa-converter-version"></span></h2>
     </div>
   </div>
   <div class="container-fluid">
     <h2>You may use our test upload function below:</h2>
-    <form method="post" action="examine" enctype="multipart/form-data">
+    <form method="post" action="convert" enctype="multipart/form-data">
       <div class="row">
         <div class="col-xs-10 col-xs-offset-1 col-sm-6 col-sm-offset-3 col-md-4 col-md-offset-4">
           <fieldset>
@@ -45,52 +45,50 @@
   </div>
   <div class="container-fluid">
     <h2>Basic Usage Details:</h2>
-    <p>For additional information please refer to the <a href="http://fitstool.org">FITS homepage</a>.
       <ul>
         <li><strong>Conventions Used In Examples:</strong><br/>
           Below are the conventions we will be using within the examples given.
           <dl class="dl-horizontal">
-            <dt>/fits</dt>
-            <dd>The context root is assumed to be /fits.  Your context root may be different depending on installation</dd>
+            <dt>/PDF/A Converter</dt>
+            <dd>The context root is assumed to be /pdfa-converter-service.  Your context root may be different depending on installation</dd>
             <dt>HOST</dt>
-            <dd>Refers to your server where fits has been installed. </dd>
+            <dd>Refers to your server where pdfa-converter-service has been installed. </dd>
             <dt>PORT</dt>
-            <dd>Refers to the port on which fits is running.</dd>
+            <dd>Refers to the port on which pdfa-converter-service is running.</dd>
             <dt>REMOTEFILE</dt>
-            <dd>Refers to the filename with full path on the FITS server to examine</dd>
+            <dd>Refers to the filename with full path on the server to convert</dd>
             <dt>LOCALFILE</dt>
-            <dd>Refers to a file which you will upload to FITS with full path</dd>
+            <dd>Refers to a file which you will upload to the PDF/A Converter with full path</dd>
           </dl>
         </li>
-        <li><strong>Endpoint: <code>/examine</code></strong><br/>
-          Examining a file and returing the corresponding metadata containing both FITS output and standard schema output in XML
-          format. (See FITS for more information.)
+        <li><strong>Endpoint: <code>/convert</code></strong><br/>
+          Convert a file and returning the corresponding PDF/A if the input file is of a type that the service is able to convert.
           <dl class="dl-horizontal">
             <dt>GET (using curl):</dt>
-            <dd><code class="bg-info">curl --get -k --data-binary file=REMOTEFILE http://HOST:PORT/fits/examine</code></dd>
+            <dd><code class="bg-info">curl --get -k --data-binary file=REMOTEFILE http://HOST:PORT/pdfa-converter-service/convert</code></dd>
             <dt>GET (using browser):</dt>
-            <dd><code class="bg-info">http://HOST:PORT/fits/examine?file=REMOTEFILE</code></dd>
+            <dd><code class="bg-info">http://HOST:PORT/pdfa-converter-servic/convert?file=REMOTEFILE</code></dd>
             <dt>POST (using curl):</dt>
-            <dd><code class="bg-info">curl -k -F datafile=LOCALFILE http://HOST:PORT/fits/examine</code></dd>
+            <dd><code class="bg-info">curl -k -F datafile=LOCALFILE http://HOST:PORT/pdfa-converter-service/convert</code></dd>
             <dt>POST (using browser):</dt>
-            <dd><code class="bg-info">http://HOST:PORT/fits/index.html</code> Use the upload form.</dd>
+            <dd><code class="bg-info">http://HOST:PORT/pdfa-converter-servic/index.html</code> Use the upload form.</dd>
           </dl>
         </li>
         <li><strong>Endpoint: <code>/version</code></strong><br/>
-        Obtaining the version information for FITS being used to examine the input files returned in plain text format. (GET request only)
+        Obtaining the version information for the PDF Converter being used to convert the input files returned in plain text format. (GET request only)
         <dl class="dl-horizontal">
           <dt>GET (using curl):</dt>
-          <dd><code class="bg-info">curl --get http://HOST:PORT/fits/version</code></dd>
+          <dd><code class="bg-info">curl --get http://HOST:PORT/pdfa-converter-service/version</code></dd>
           <dt>GET (using browser)</dt>
-          <dd><code class="bg-info">http://HOST:PORT/fits/version</code></dd>
+          <dd><code class="bg-info">http://HOST:PORT/pdfa-converter-service/version</code></dd>
         </dl>
         <li><strong>Information</strong><br/>
-          The return of any fits call will be a structured XML.  If the file is properly identified this will be the FITS output, if there is an issue with the uploaded file an XML error response.
+          The return of any PDFA Converter service call will be a structured XML.  If the file is properly identified this will be the PDFA Converter output, if there is an issue with the uploaded file an XML error response.
         </li>
       </ul>
     </div>
     <script>
-      $( "#fitsversion" ).load( "version" );
+      $( "#pdfa-converter-version" ).load( "version" );
     </script>
 </body>
 </html>

@@ -28,7 +28,7 @@ import org.apache.logging.log4j.Logger;
  * @author dan179
  */
 public class FormFileUploaderClientApplication {
-	private static String serverUrl = "http://localhost:8080/pdfa-converter-0.9.0/examine"; // default value - override with args[1]
+	private static String serverUrl = "http://localhost:8080/pdfa-converter-0.9.0/convert"; // default value - override with args[1]
 	private static Logger logger = null;
 
 	private static final String LOG4J_PROPERTIES_FILE = "tests.log4j.properties";
