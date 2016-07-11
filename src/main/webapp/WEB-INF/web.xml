@@ -11,7 +11,7 @@
 <!--   </listener> -->
   <servlet>
     <servlet-name>PdfaConverterServlet</servlet-name>
-    <servlet-class>edu.harvard.hul.ois.drs.service.servlets.PdfaConverterServlet</servlet-class>
+    <servlet-class>edu.harvard.hul.ois.drs.pdfaconvert.service.servlets.PdfaConverterServlet</servlet-class>
     <load-on-startup>0</load-on-startup>
   </servlet>
   <servlet-mapping>

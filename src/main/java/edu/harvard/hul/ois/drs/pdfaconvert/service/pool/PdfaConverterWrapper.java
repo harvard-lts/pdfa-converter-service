@@ -7,7 +7,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permission and limitations under the License.
 */
-package edu.harvard.hul.ois.drs.service.pool;
+package edu.harvard.hul.ois.drs.pdfaconvert.service.pool;
 
 import javax.servlet.ServletException;
 

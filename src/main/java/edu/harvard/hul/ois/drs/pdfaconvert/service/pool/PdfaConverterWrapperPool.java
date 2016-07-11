@@ -7,16 +7,17 @@ Unless required by applicable law or agreed to in writing, software distributed 
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permission and limitations under the License.
 */
-package edu.harvard.hul.ois.drs.service.common;
+package edu.harvard.hul.ois.drs.pdfaconvert.service.pool;
 
-public class Constants {
+import org.apache.commons.pool2.PooledObjectFactory;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
-	public final static String RESOURCE_PATH_EXAMINE = "/examine";
-    public final static String RESOURCE_PATH_VERSION = "/version";
-    public final static String FORM_FIELD_DATAFILE = "datafile";
-    public final static String TEXT_HTML_MIMETYPE = "text/html";
-    public final static String TEXT_PLAIN_MIMETYPE = "text/plain";
-    public final static String TEXT_XML_MIMETYPE = "text/xml";
-    public final static String PDF_MIMETYPE = "application/pdf";
-    public final static String FILE_PARAM = "file";
+public class PdfaConverterWrapperPool extends GenericObjectPool<PdfaConverterWrapper> {
+
+    public PdfaConverterWrapperPool(PooledObjectFactory<PdfaConverterWrapper> factory, GenericObjectPoolConfig config) {
+        super(factory, config);
+    }
+
 }
+

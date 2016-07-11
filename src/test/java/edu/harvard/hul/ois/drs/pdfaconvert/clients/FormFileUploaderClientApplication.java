@@ -7,9 +7,9 @@ Unless required by applicable law or agreed to in writing, software distributed 
 distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permission and limitations under the License.
 */
-package edu.harvard.hul.ois.drs.clients;
+package edu.harvard.hul.ois.drs.pdfaconvert.clients;
 
-import static edu.harvard.hul.ois.drs.service.common.Constants.FORM_FIELD_DATAFILE;
+import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.FORM_FIELD_DATAFILE;
 
 import java.io.BufferedReader;
 import java.io.File;
