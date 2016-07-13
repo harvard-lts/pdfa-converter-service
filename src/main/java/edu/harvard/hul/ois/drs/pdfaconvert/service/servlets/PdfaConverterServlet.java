@@ -71,7 +71,6 @@ public class PdfaConverterServlet extends HttpServlet {
 
 	private PdfaConverterWrapperPool pdfaConverterWrapperPool;
 	private DiskFileItemFactory factory;
-	private String uploadPath;
 
 	public void init() throws ServletException {
 
@@ -92,13 +91,6 @@ public class PdfaConverterServlet extends HttpServlet {
 		ServletFileUpload upload = new ServletFileUpload(factory);
 		upload.setFileSizeMax(MAX_FILE_SIZE);
 		upload.setSizeMax(MAX_REQUEST_SIZE);
-		
-		// RealPath contains a final File.separator character
-		uploadPath = getServletContext().getRealPath("") + UPLOAD_DIRECTORY;
-		File uploadDir = new File(uploadPath);
-		if (!uploadDir.exists()) {
-			uploadDir.mkdir();
-		}
 
 		logger.debug("PdfaConverter pool finished Initializing");
 	}
