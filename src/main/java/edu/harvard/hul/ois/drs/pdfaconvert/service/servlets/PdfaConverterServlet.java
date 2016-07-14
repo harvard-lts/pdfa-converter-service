@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -49,6 +50,7 @@ import edu.harvard.hul.ois.drs.pdfaconvert.ExternalToolException;
 import edu.harvard.hul.ois.drs.pdfaconvert.GeneratedFileUnavailableException;
 import edu.harvard.hul.ois.drs.pdfaconvert.PdfaConverterOutput;
 import edu.harvard.hul.ois.drs.pdfaconvert.UnknownFileTypeException;
+import edu.harvard.hul.ois.drs.pdfaconvert.service.common.DiskFileItemExt;
 import edu.harvard.hul.ois.drs.pdfaconvert.service.common.ErrorMessage;
 import edu.harvard.hul.ois.drs.pdfaconvert.service.pool.PdfaConverterWrapper;
 import edu.harvard.hul.ois.drs.pdfaconvert.service.pool.PdfaConverterWrapperFactory;
@@ -60,17 +62,19 @@ import edu.harvard.hul.ois.drs.pdfaconvert.service.pool.PdfaConverterWrapperPool
  * to the local file's location. For a remote upload HTTP POST is used to pass
  * the in the file as form data.
  */
+@WebServlet(name="PDF-A Converter Servlet", urlPatterns={"/convert", "/version"}, loadOnStartup=0, asyncSupported=false)
 public class PdfaConverterServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
-	private static final String UPLOAD_DIRECTORY = "upload";
-	private static final int THRESHOLD_SIZE = 1024 * 1024 * 3; // 3MB
+	private static final String UPLOAD_DIRECTORY = "java.io.tmpdir";
+	private static final int THRESHOLD_SIZE = 1024 * 1024 * 3; // 3MB - above which the temporary file is stored to disk
 	private static final int MAX_FILE_SIZE = 1024 * 1024 * 40; // 40MB
 	private static final int MAX_REQUEST_SIZE = 1024 * 1024 * 50; // 50MB
 	private static final Logger logger = LogManager.getLogger();
 
 	private PdfaConverterWrapperPool pdfaConverterWrapperPool;
 	private DiskFileItemFactory factory;
+	private ServletFileUpload upload;
 
 	public void init() throws ServletException {
 
@@ -86,9 +90,13 @@ public class PdfaConverterServlet extends HttpServlet {
 		// configures upload settings
 		factory = new DiskFileItemFactory();
 		factory.setSizeThreshold(THRESHOLD_SIZE);
-		factory.setRepository(new File(System.getProperty("java.io.tmpdir")));
+		File tempUploadDir = new File(System.getProperty(UPLOAD_DIRECTORY));
+		if (!tempUploadDir.exists()) {
+			tempUploadDir.mkdir();
+		}
+		factory.setRepository(tempUploadDir);
 
-		ServletFileUpload upload = new ServletFileUpload(factory);
+		upload = new ServletFileUpload(factory);
 		upload.setFileSizeMax(MAX_FILE_SIZE);
 		upload.setSizeMax(MAX_REQUEST_SIZE);
 
@@ -177,11 +185,6 @@ public class PdfaConverterServlet extends HttpServlet {
 			return;
 		}
 
-		// not sure if this can be a member variable; whether it's thread safe
-		ServletFileUpload upload = new ServletFileUpload(factory);
-		upload.setFileSizeMax(MAX_FILE_SIZE);
-		upload.setSizeMax(MAX_REQUEST_SIZE);
-
 		try {
 			List<FileItem> formItems = upload.parseRequest(request);
 			Iterator<FileItem> iter = formItems.iterator();
@@ -204,15 +207,32 @@ public class PdfaConverterServlet extends HttpServlet {
 					// save original uploaded file name
 					InputStream inputStream = item.getInputStream();
 					String origFileName = item.getName();
+					
+					DiskFileItemExt itemExt = new DiskFileItemExt(item.getFieldName(), item.getContentType(), item.isFormField(), item.getName(), THRESHOLD_SIZE, factory.getRepository());
+					// Create a temporary unique filename for a file containing the original temp filename plus the real filename containing its file type suffix.
+					StringBuilder realFileTypeFilename = new StringBuilder(itemExt.getTempFile().getName());
+					realFileTypeFilename.append('-');
+					realFileTypeFilename.append(origFileName);
+					// create the file in the same temporary directory
+					File realInputFile = new File(factory.getRepository(), realFileTypeFilename.toString());
 
-					// turn InputStream into a File
-					File file = new File(origFileName);
-					OutputStream outputStream = new FileOutputStream(file);
+					// turn InputStream into a File in temp directory
+					OutputStream outputStream = new FileOutputStream(realInputFile);
 					IOUtils.copy(inputStream, outputStream);
 					outputStream.close();
-
-					// Send it to the PdfaConverter processor...
-					sendPdfaConverterExamineResponse(file, origFileName, request, response);
+					
+					try {
+						// Send it to the PdfaConverter processor...
+						sendPdfaConverterExamineResponse(realInputFile, origFileName, request, response);
+					} finally {
+						// delete both original temporary file -- if large enough will have been persisted to disk -- and our created file
+						if (!item.isInMemory()) { // 
+							item.delete();
+						}
+						if (realInputFile.exists()) {
+							realInputFile.delete();
+						}
+					}
 
 				} else {
 					ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_BAD_REQUEST,
@@ -278,23 +298,24 @@ public class PdfaConverterServlet extends HttpServlet {
 			while ((bytes = fileInputStream.read()) != -1) {
 				responseOutputStream.write(bytes);
 			}
+			logger.debug("Finished writing to OutputStream");
 		} catch (UnknownFileTypeException e) {
 			// This is user input error of a file type that cannot be handled so 400 error
 			logger.warn(e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_BAD_REQUEST,
-					" PdfaConverter Could not handle this request - ", req.getRequestURL().toString(), e.getMessage());
+					" PdfaConverter Could not handle this request. ", req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} catch (ExternalToolException | GeneratedFileUnavailableException e) {
 			// These cannot be resolved by user so translate to a 500 response
 			logger.error(e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" PdfaConverter failed unexpectedly - ", req.getRequestURL().toString(), e.getMessage());
+					" PdfaConverter failed unexpectedly. ", req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} catch (Throwable e) {
 			// trap any other type of error
 			logger.error("Unexpected exception: " + e.getLocalizedMessage(), e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" PdfaConverter failed unexpectedly - ", req.getRequestURL().toString(), e.getMessage());
+					" PdfaConverter failed unexpectedly. ", req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} finally {
 			if (fileInputStream != null) {
@@ -318,7 +339,7 @@ public class PdfaConverterServlet extends HttpServlet {
 		} catch (Exception e) {
 			logger.error("Problem executing call...", e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" Getting PdfaConverter version failed", req.getRequestURL().toString(), e.getMessage());
+					" Getting PdfaConverter version failed. ", req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} finally {
 			if (pdfaConverterWrapper != null) {
