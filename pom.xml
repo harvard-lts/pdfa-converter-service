@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>edu.harvard.hul.ois.drs.pdfa</groupId>
 	<artifactId>pdfa-converter-service</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.5.0</version>
 	<packaging>war</packaging>
 	<name>PDF/a Converter Service</name>
 
