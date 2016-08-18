@@ -3,8 +3,6 @@
 This project is a server-based service that has the PDF/A Converter project build artifact as a Maven dependency. This is reflected in this project's POM file.
 The PDF/A Converter project is located here: https://github.com/harvard-lts/drs-pdfa-conversion.
 
-Currently, in lieu of a central Maven repository to hold the JAR artifact from the drs-pdfa-conversion project, this JAR file is contained with this project's lib/ folder and is referenced in the POM file.
-
 This has been tested on Tomcat 8 and requires Java 8.
 
 
@@ -49,15 +47,17 @@ The converted PDF/A document will be returned as a file to download.
 It’s necessary to add the location of the PDF/A Converter Utility home directory to the file `$CATALINA_BASE/conf/catalina.properties` then add the location of the PDF/A Converter Utility lib folder JAR files. (See example below.) 
 <br>1. Add the “pdfaConverter.home” environment variable.
 <br>2. Add all “pdfaConverter.home”/lib/ JAR files to the shared class loader classpath with a wildcard ‘*’ and the `${pdfaConverter.home}` property substitution.
-<br>3. Create a file, project.properties, for the location of the external applications necessary for converting the various word processing documents to PDF/A format. The default version of this file is in the src/main/resources directory. This file should be added to the catalina.properties file as well with the value: `PDFA_CONVERTER_PROPS=/path/to/project.properties`
+<br>3. Create a file, pdfa-service.properties, for the location of the external applications necessary for converting the various word processing documents to PDF/A format. The default version of this file is in the src/main/resources directory. This file should be added to the catalina.properties file as well with the value: `PDFA_CONVERTER_PROPS=/path/to/pdfa-service.properties`
 <br>4. (optional) Rather than using the default log4j2.xml file built into the WAR file and resides in the src/main/resources folder it's possible (and encouraged) to set up logging to 
 point to an external log4j2.xml. Add a "log4j.configurationFile" property to catalina.properties pointing to this file.
+<br>5. (optional) Create an external properties file to change the default configuration values for Servlet upload file size and other values contained in WEB-INF/classes/pdfa-service.properties.
 #### catalina.properties example
 Add the following to the bottom of the file:
 - `pdfaConverter.home=path/to/drs-pdfa-converter/home` (note: no final slash in path)
 - `shared.loader=${pdfaConverter.home}/lib/*.jar`
-- `PDFA_CONVERTER_PROPS=/path/to/project.properties`
+- `PDFA_CONVERTER_PROPS=/path/to/pdfa-service.properties`
 - `log4j.configuration=/path/to/log4j2.xml` or `log4j.configuration=/path/to/log4j2.xmls` (optional -- to override using the default log4j2.xml.) 
+- `PDFA_SERVICE_PROPS=/path/to/pdfa-service.properties` (optional -- to override default values contained within WAR file.)
 
 #### Additional Information:
 **Class loading:** Within the WAR file’s META-INF directory is a Tomcat-specific file, context.xml. This file indicates to the Tomcat to modify the default class loader scheme for this application. The result is that, rather than load the WAR’s classes and JAR files first, classes on Tomcat’s shared classpath will be loaded first. This is important so that log4j in the PDF/A Converter Utility uses the same log4j configuration file as set in the web application.

@@ -11,12 +11,28 @@ package edu.harvard.hul.ois.drs.pdfaconvert.service.common;
 
 public class Constants {
 
-	public final static String RESOURCE_PATH_EXAMINE = "/examine";
+	/** Environment variable for setting path to external application properties file */
+	public final static String ENV_PROJECT_PROPS = "PDFA_SERVICE_PROPS";
+
+	/** Name of application properties file */
+	public final static String PROPERTIES_FILE_NAME = "pdfa-service.properties";
+
+	/** Resource path for processing an input file */
+	public final static String RESOURCE_PATH_CONVERT = "/convert";
+
+	/** Resource path for obtaining the PDF/A Utility version (GET only) */
     public final static String RESOURCE_PATH_VERSION = "/version";
+
+	/** Form variable name for access to input file (POST) */
     public final static String FORM_FIELD_DATAFILE = "datafile";
-    public final static String TEXT_HTML_MIMETYPE = "text/html";
+
+	/** Request parameter name for pointing to input file (GET) */
+    public final static String FILE_PARAM = "file";
+
+	/** Key for placing input file name into Request */
+    public final static String TEMP_FILE_NAME_KEY = "tempFilename";
+    
     public final static String TEXT_PLAIN_MIMETYPE = "text/plain";
     public final static String TEXT_XML_MIMETYPE = "text/xml";
     public final static String PDF_MIMETYPE = "application/pdf";
-    public final static String FILE_PARAM = "file";
 }

@@ -41,7 +41,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 /**
- * This is a test client to exercise the PdfaConverterServlet. It requires a configured and running server.
+ * This is a test client to exercise the PdfaConverterServlet. It requires this application running on server.
  * 
  * @author dan179
  */
@@ -123,7 +123,7 @@ public class HttpClientIntegrationTest {
 	}
 	
 	@Test
-	public void doPutTest() throws URISyntaxException {
+	public void doPostTest() throws URISyntaxException {
 		ClassLoader loader = Thread.currentThread().getContextClassLoader();
 		URL fileUrl = loader.getResource(INPUT_FILENAME);
 		File inputFile = new File(fileUrl.toURI());
