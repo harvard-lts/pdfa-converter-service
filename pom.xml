@@ -3,15 +3,9 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>edu.harvard.hul.ois.drs.pdfa</groupId>
 	<artifactId>pdfa-converter-service</artifactId>
-	<version>0.5.0</version>
+	<version>0.6.0</version>
 	<packaging>war</packaging>
 	<name>PDF/a Converter Service</name>
-
-	<properties>
-		<pdfa-converter-jar-groupId>edu.harvard.hul.ois.drs.pdfa</pdfa-converter-jar-groupId>
-		<pdfa-converter-jar-artifactId>pdfa-converter</pdfa-converter-jar-artifactId>
-		<pdfa-converter-jar-version>0.9.0-SNAPSHOT</pdfa-converter-jar-version>
-	</properties>
 
 	<build>
 		<plugins>
@@ -35,13 +29,9 @@
 	</build>
 	<dependencies>
 		<dependency>
-		    <!-- MAJOR temporary kludge: Reference a project-local dependency rather than via a Maven repo. (until available in a repo.) -->
-			<groupId>${pdfa-converter-jar-groupId}</groupId>
-			<artifactId>${pdfa-converter-jar-artifactId}</artifactId>
-			<version>${pdfa-converter-jar-version}</version>
-			<!-- remove this next 2 lines once the pdfa-converter JAR is available from a Maven repo -->
-            <systemPath>${project.basedir}/lib/pdfa-converter-0.9.0-SNAPSHOT.jar</systemPath>
-            <scope>system</scope>
+			<groupId>edu.harvard.hul.ois.drs.pdfa</groupId>
+			<artifactId>pdfa-converter</artifactId>
+			<version>0.6.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>

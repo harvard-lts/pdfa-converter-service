@@ -9,10 +9,14 @@ See the License for the specific language governing permission and limitations u
 */
 package edu.harvard.hul.ois.drs.pdfaconvert.service.servlets;
 
+import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.ENV_PROJECT_PROPS;
 import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.FILE_PARAM;
 import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.FORM_FIELD_DATAFILE;
 import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.PDF_MIMETYPE;
+import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.PROPERTIES_FILE_NAME;
+import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.RESOURCE_PATH_CONVERT;
 import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.RESOURCE_PATH_VERSION;
+import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.TEMP_FILE_NAME_KEY;
 import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.TEXT_PLAIN_MIMETYPE;
 import static edu.harvard.hul.ois.drs.pdfaconvert.service.common.Constants.TEXT_XML_MIMETYPE;
 
@@ -26,6 +30,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -45,6 +50,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Marker;
+import org.apache.logging.log4j.MarkerManager;
 
 import edu.harvard.hul.ois.drs.pdfaconvert.ExternalToolException;
 import edu.harvard.hul.ois.drs.pdfaconvert.GeneratedFileUnavailableException;
@@ -62,34 +69,90 @@ import edu.harvard.hul.ois.drs.pdfaconvert.service.pool.PdfaConverterWrapperPool
  * to the local file's location. For a remote upload HTTP POST is used to pass
  * the in the file as form data.
  */
-@WebServlet(name="PDF-A Converter Servlet", urlPatterns={"/convert", "/version"}, loadOnStartup=0, asyncSupported=false)
+@WebServlet(name="PDF-A Converter Servlet", urlPatterns={RESOURCE_PATH_CONVERT, RESOURCE_PATH_VERSION}, loadOnStartup=1, asyncSupported=false)
 public class PdfaConverterServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	private static final String UPLOAD_DIRECTORY = "java.io.tmpdir";
-	private static final int THRESHOLD_SIZE = 1024 * 1024 * 3; // 3MB - above which the temporary file is stored to disk
-	private static final int MAX_FILE_SIZE = 1024 * 1024 * 40; // 40MB
-	private static final int MAX_REQUEST_SIZE = 1024 * 1024 * 50; // 50MB
+	private static final int MIN_IDLE_OBJECTS_IN_POOL = 3;
+	private static final String DEFAULT_MAX_OBJECTS_IN_POOL = "10";
+	private static final String DEFAULT_MAX_UPLOAD_SIZE = "40";  // in MB
+	private static final String DEFAULT_MAX_REQUEST_SIZE = "50"; // in MB
+	private static final String DEFAULT_IN_MEMORY_FILE_SIZE = "3"; // in MB - above which the temporary file is stored to disk
+	private static final long MB_MULTIPLIER = 1024 * 1024;
+	private static int poolUsageCount = 0; // for testing usage of pool objects
 	private static final Logger logger = LogManager.getLogger();
+	private static final Marker POOL_MARKER = MarkerManager.getMarker("POOL");
 
 	private PdfaConverterWrapperPool pdfaConverterWrapperPool;
 	private DiskFileItemFactory factory;
 	private ServletFileUpload upload;
+	private Properties applicationProps = null;
+	private int maxInMemoryFileSizeMb;
 
+	@Override
 	public void init() throws ServletException {
+		
+		// Set the projects properties.
+		// First look for a system property pointing to a project properties file.
+		// This value can be either a file path, file protocol (e.g. - file:/path/to/file),
+		// or a URL (http://some/server/file).
+		// If this value either does not exist or is not valid, the default
+		// file that comes with this application will be used for initialization.
+		String environmentProjectPropsFile = System.getProperty(ENV_PROJECT_PROPS);
+		logger.info("Value of environment property: [{}] for finding external properties file in location: {}",ENV_PROJECT_PROPS,  environmentProjectPropsFile);
+		if (environmentProjectPropsFile != null) {
+			logger.info("Will look for properties file from environment in location: {}", environmentProjectPropsFile);
+			try {
+				File projectProperties = new File(environmentProjectPropsFile);
+				if (projectProperties.exists() && projectProperties.isFile() && projectProperties.canRead()) {
+					InputStream is = new FileInputStream(projectProperties);
+					applicationProps = new Properties();
+					applicationProps.load(is);
+				}
+			} catch (IOException e) {
+				// fall back to default file
+				logger.error("Unable to load properties file: {} -- reason: {}", environmentProjectPropsFile, e.getMessage());
+				logger.error("Falling back to default project.properties file: {}", PROPERTIES_FILE_NAME);
+				applicationProps = null;
+			}
+		}
+
+		if (applicationProps == null) { // did not load from environment variable location
+			try {
+				ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+				InputStream resourceStream = classLoader.getResourceAsStream(PROPERTIES_FILE_NAME);
+				if (resourceStream != null) {
+					applicationProps = new Properties();
+					applicationProps.load(resourceStream);
+					logger.info("loaded default applicationProps");
+				} else {
+					logger.warn("project.properties not found!!!");
+				}
+			} catch (IOException e) {
+				logger.error("Could not load properties file: {}", PROPERTIES_FILE_NAME, e);
+				// couldn't load default properties so bail...
+				throw new ServletException("Couldn't load an applications properties file.", e);
+			}
+		}
+		int maxPoolSize = Integer.valueOf(applicationProps.getProperty("max.objects.in.pool", DEFAULT_MAX_OBJECTS_IN_POOL));
+		long maxFileUploadSizeMb = Long.valueOf(applicationProps.getProperty("max.upload.file.size.MB", DEFAULT_MAX_UPLOAD_SIZE));
+		long maxRequestSizeMb = Long.valueOf(applicationProps.getProperty("max.request.size.MB", DEFAULT_MAX_REQUEST_SIZE));
+		maxInMemoryFileSizeMb = Integer.valueOf(applicationProps.getProperty("max.in.memory.file.size.MB", DEFAULT_IN_MEMORY_FILE_SIZE));
+		logger.info("Max objects in object pool: {} -- Max file upload size: {}MB -- Max request object size: {}MB -- Max in-memory file size: {}MB",
+				maxPoolSize, maxFileUploadSizeMb, maxRequestSizeMb, maxInMemoryFileSizeMb);
 
 		logger.debug("Initializing PdfaConverter pool");
 		GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
-		int numObjectsInPool = 5;
-		poolConfig.setMinIdle(numObjectsInPool);
-		poolConfig.setMaxTotal(numObjectsInPool);
+		poolConfig.setMinIdle(MIN_IDLE_OBJECTS_IN_POOL);
+		poolConfig.setMaxTotal(maxPoolSize);
 		poolConfig.setTestOnBorrow(true);
 		poolConfig.setBlockWhenExhausted(true);
 		pdfaConverterWrapperPool = new PdfaConverterWrapperPool(new PdfaConverterWrapperFactory(), poolConfig);
 
 		// configures upload settings
 		factory = new DiskFileItemFactory();
-		factory.setSizeThreshold(THRESHOLD_SIZE);
+		factory.setSizeThreshold((maxInMemoryFileSizeMb * (int)MB_MULTIPLIER));
 		File tempUploadDir = new File(System.getProperty(UPLOAD_DIRECTORY));
 		if (!tempUploadDir.exists()) {
 			tempUploadDir.mkdir();
@@ -97,10 +160,27 @@ public class PdfaConverterServlet extends HttpServlet {
 		factory.setRepository(tempUploadDir);
 
 		upload = new ServletFileUpload(factory);
-		upload.setFileSizeMax(MAX_FILE_SIZE);
-		upload.setSizeMax(MAX_REQUEST_SIZE);
+		upload.setFileSizeMax(maxFileUploadSizeMb * MB_MULTIPLIER); // convert from MB to bytes
+		upload.setSizeMax(maxRequestSizeMb * MB_MULTIPLIER); // convert from MB to bytes
 
 		logger.debug("PdfaConverter pool finished Initializing");
+	}
+	
+	/**
+	 * Clean up any leftover files in Servlet container upload directory.
+	 * These should have been cleaned up during normal processing.
+	 * 
+	 * @see javax.servlet.GenericServlet#destroy()
+	 */
+	@Override
+	public void destroy() {
+		File tempUploadDir = new File(System.getProperty(UPLOAD_DIRECTORY));
+		if (tempUploadDir.exists() && tempUploadDir.listFiles() != null) {
+			File[] files = tempUploadDir.listFiles();
+			for (File file : files) {
+				file.delete();
+			}
+		}
 	}
 
 	/**
@@ -208,13 +288,22 @@ public class PdfaConverterServlet extends HttpServlet {
 					InputStream inputStream = item.getInputStream();
 					String origFileName = item.getName();
 					
-					DiskFileItemExt itemExt = new DiskFileItemExt(item.getFieldName(), item.getContentType(), item.isFormField(), item.getName(), THRESHOLD_SIZE, factory.getRepository());
+					DiskFileItemExt itemExt = new DiskFileItemExt(item.getFieldName(),
+							item.getContentType(),
+							item.isFormField(),
+							item.getName(),
+							(maxInMemoryFileSizeMb * (int)MB_MULTIPLIER),
+							factory.getRepository());
 					// Create a temporary unique filename for a file containing the original temp filename plus the real filename containing its file type suffix.
-					StringBuilder realFileTypeFilename = new StringBuilder(itemExt.getTempFile().getName());
+					String tempFilename = itemExt.getTempFile().getName();
+					StringBuilder realFileTypeFilename = new StringBuilder(tempFilename);
 					realFileTypeFilename.append('-');
 					realFileTypeFilename.append(origFileName);
 					// create the file in the same temporary directory
 					File realInputFile = new File(factory.getRepository(), realFileTypeFilename.toString());
+					
+					// strip out suffix before saving to ServletRequestListener
+					request.setAttribute(TEMP_FILE_NAME_KEY, tempFilename.substring(0, tempFilename.indexOf('.')));
 
 					// turn InputStream into a File in temp directory
 					OutputStream outputStream = new FileOutputStream(realInputFile);
@@ -245,8 +334,9 @@ public class PdfaConverterServlet extends HttpServlet {
 			}
 
 		} catch (FileUploadException ex) {
+			logger.error(ex);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" There was an unexpected server error. ", request.getRequestURL().toString(),
+					" There was an unexpected server error: " + ex.getMessage(), request.getRequestURL().toString(),
 					" Processing halted.");
 			sendErrorMessageResponse(errorMessage, response);
 			return;
@@ -268,9 +358,12 @@ public class PdfaConverterServlet extends HttpServlet {
 
 		FileInputStream fileInputStream = null;
 		PdfaConverterWrapper pdfaConverterWrapper = null;
+		int poolCnt = poolUsageCount++;
 		try {
 			logger.debug("Borrowing PdfaConverter from pool");
+	        logger.info(POOL_MARKER, "About to get PdfaConverter object from pool");
 			pdfaConverterWrapper = pdfaConverterWrapperPool.borrowObject();
+	        logger.info(POOL_MARKER, "Got PdfaConverter object from pool number: {}", poolCnt);
 
 			logger.debug("Running PdfaConverter on " + inputFile.getPath());
 			
@@ -284,7 +377,7 @@ public class PdfaConverterServlet extends HttpServlet {
 			String generatedPdfFilename = outputFilenameBase + ".pdf";
 
 			// Start the output process
-			PdfaConverterOutput output = pdfaConverterWrapper.getPdfaConvert().examine(inputFile);
+			PdfaConverterOutput output = pdfaConverterWrapper.getPdfaConvert().examine(inputFile, true);
 			File pdfReturnFile = output.getPdfaConvertedFile();
 			resp.setContentType(PDF_MIMETYPE);
 			// Double-quote the filename in case it contains spaces so it doesn't get truncated at first space.
@@ -303,25 +396,26 @@ public class PdfaConverterServlet extends HttpServlet {
 			// This is user input error of a file type that cannot be handled so 400 error
 			logger.warn(e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_BAD_REQUEST,
-					" PdfaConverter Could not handle this request. ", req.getRequestURL().toString(), e.getMessage());
+					" PdfaConverter Could not handle this request: " + e.getMessage(), req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} catch (ExternalToolException | GeneratedFileUnavailableException e) {
 			// These cannot be resolved by user so translate to a 500 response
 			logger.error(e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" PdfaConverter failed unexpectedly. ", req.getRequestURL().toString(), e.getMessage());
+					" PdfaConverter failed unexpectedly: " + e.getMessage(), req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} catch (Throwable e) {
 			// trap any other type of error
 			logger.error("Unexpected exception: " + e.getLocalizedMessage(), e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" PdfaConverter failed unexpectedly. ", req.getRequestURL().toString(), e.getMessage());
+					" PdfaConverter failed unexpectedly: " + e.getMessage(), req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} finally {
 			if (fileInputStream != null) {
 				fileInputStream.close();
 			}
 			if (pdfaConverterWrapper != null) {
+				logger.info(POOL_MARKER, "Returning PdfaConverter object to pool number: {}", poolCnt);
 				logger.debug("Returning PdfaConverter to pool");
 				pdfaConverterWrapperPool.returnObject(pdfaConverterWrapper);
 			}
@@ -339,7 +433,7 @@ public class PdfaConverterServlet extends HttpServlet {
 		} catch (Exception e) {
 			logger.error("Problem executing call...", e);
 			ErrorMessage errorMessage = new ErrorMessage(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-					" Getting PdfaConverter version failed. ", req.getRequestURL().toString(), e.getMessage());
+					" Getting PdfaConverter version failed: " + e.getMessage(), req.getRequestURL().toString(), e.getMessage());
 			sendErrorMessageResponse(errorMessage, resp);
 		} finally {
 			if (pdfaConverterWrapper != null) {
