@@ -3,8 +3,6 @@
 This project is a server-based service that has the PDF/A Converter project build artifact as a Maven dependency. This is reflected in this project's POM file.
 The PDF/A Converter project is located here: https://github.com/harvard-lts/drs-pdfa-conversion.
 
-Currently, in lieu of a central Maven repository to hold the JAR artifact from the drs-pdfa-conversion project, this JAR file is contained with this project's lib/ folder and is referenced in the POM file.
-
 This has been tested on Tomcat 8 and requires Java 8.
 
 
