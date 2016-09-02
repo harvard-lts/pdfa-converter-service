@@ -86,17 +86,16 @@ public class PdfaConverterServlet extends HttpServlet {
 
 	private PdfaConverterWrapperPool pdfaConverterWrapperPool;
 	private DiskFileItemFactory factory;
-	private ServletFileUpload upload;
 	private Properties applicationProps = null;
 	private int maxInMemoryFileSizeMb;
+	private long maxFileUploadSizeMb;
+	private long maxRequestSizeMb;
 
 	@Override
 	public void init() throws ServletException {
 		
 		// Set the projects properties.
-		// First look for a system property pointing to a project properties file.
-		// This value can be either a file path, file protocol (e.g. - file:/path/to/file),
-		// or a URL (http://some/server/file).
+		// First look for a system property pointing to a project properties file. (e.g. - file:/path/to/file)
 		// If this value either does not exist or is not valid, the default
 		// file that comes with this application will be used for initialization.
 		String environmentProjectPropsFile = System.getProperty(ENV_PROJECT_PROPS);
@@ -136,8 +135,8 @@ public class PdfaConverterServlet extends HttpServlet {
 			}
 		}
 		int maxPoolSize = Integer.valueOf(applicationProps.getProperty("max.objects.in.pool", DEFAULT_MAX_OBJECTS_IN_POOL));
-		long maxFileUploadSizeMb = Long.valueOf(applicationProps.getProperty("max.upload.file.size.MB", DEFAULT_MAX_UPLOAD_SIZE));
-		long maxRequestSizeMb = Long.valueOf(applicationProps.getProperty("max.request.size.MB", DEFAULT_MAX_REQUEST_SIZE));
+		maxFileUploadSizeMb = Long.valueOf(applicationProps.getProperty("max.upload.file.size.MB", DEFAULT_MAX_UPLOAD_SIZE));
+		maxRequestSizeMb = Long.valueOf(applicationProps.getProperty("max.request.size.MB", DEFAULT_MAX_REQUEST_SIZE));
 		maxInMemoryFileSizeMb = Integer.valueOf(applicationProps.getProperty("max.in.memory.file.size.MB", DEFAULT_IN_MEMORY_FILE_SIZE));
 		logger.info("Max objects in object pool: {} -- Max file upload size: {}MB -- Max request object size: {}MB -- Max in-memory file size: {}MB",
 				maxPoolSize, maxFileUploadSizeMb, maxRequestSizeMb, maxInMemoryFileSizeMb);
@@ -151,17 +150,11 @@ public class PdfaConverterServlet extends HttpServlet {
 		pdfaConverterWrapperPool = new PdfaConverterWrapperPool(new PdfaConverterWrapperFactory(), poolConfig);
 
 		// configures upload settings
-		factory = new DiskFileItemFactory();
-		factory.setSizeThreshold((maxInMemoryFileSizeMb * (int)MB_MULTIPLIER));
 		File tempUploadDir = new File(System.getProperty(UPLOAD_DIRECTORY));
 		if (!tempUploadDir.exists()) {
 			tempUploadDir.mkdir();
 		}
-		factory.setRepository(tempUploadDir);
-
-		upload = new ServletFileUpload(factory);
-		upload.setFileSizeMax(maxFileUploadSizeMb * MB_MULTIPLIER); // convert from MB to bytes
-		upload.setSizeMax(maxRequestSizeMb * MB_MULTIPLIER); // convert from MB to bytes
+		factory = new DiskFileItemFactory((maxInMemoryFileSizeMb * (int)MB_MULTIPLIER), tempUploadDir);
 
 		logger.debug("PdfaConverter pool finished Initializing");
 	}
@@ -266,6 +259,9 @@ public class PdfaConverterServlet extends HttpServlet {
 		}
 
 		try {
+			ServletFileUpload upload = new ServletFileUpload(factory);
+			upload.setFileSizeMax(maxFileUploadSizeMb * MB_MULTIPLIER); // convert from MB to bytes
+			upload.setSizeMax(maxRequestSizeMb * MB_MULTIPLIER); // convert from MB to bytes
 			List<FileItem> formItems = upload.parseRequest(request);
 			Iterator<FileItem> iter = formItems.iterator();
 
